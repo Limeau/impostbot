@@ -2,6 +2,7 @@ import discord
 import random
 from discord import Intents, app_commands, Embed
 from discord.ui import Button, View
+import datetime
 from discord.ext import commands
 
 intents = discord.Intents.all()
@@ -11,28 +12,75 @@ tree = app_commands.CommandTree(bot)
 guild_id = 1220178595683766322
 test_guild_id = 1228208591786344548
 
-random_messages = ["Lime", "Taya", "Capybara", "Sarha", "Kazi", "Nai", "Captian Orange", "Zanyfee", "Gamer", "Retrodawn", "Firewall", "Laik", "Sky"]
-
 record_channel_id = 1239267379679068180
-log_channel_id = 1239314532896084100
+log_channel_id = 1256756422495174668
 
 joined_users = set()
 
-@tree.command(
-    name="join",
-    description="Joins the 200 member nitro giveaway event!",
-    guild=discord.Object(id=1228208591786344548)
-)
-async def join(interaction):
-    if interaction.user.name in joined_users:
-        await interaction.response.send_message(f'{interaction.user.mention}, you have already joined the event!', ephemeral=True)
+@tree.command(name="lfg", description="Tells users where to go if they are looking for a game!", guild=discord.Object(id=1220178595683766322))
+async def lfg(interaction):
+    if interaction.user.guild_permissions.kick_members:
+        lfge = discord.Embed(
+            title="<:HQ_GamerMode:1226036630868066365> Looking for a game?",
+            description="Try posting or finding a game in this channel: <#1246841334665445407>\nDiscuss games here: <#1246841530929643570>\nFind the server's ban list: <#1236851970506100746>",
+            color=0xff0000
+        )
+        await interaction.response.send_message("Sent!" , ephemeral=True)
+        await interaction.channel.send(embed=lfge)
     else:
-        joined_users.add(interaction.user.name)
-        await interaction.response.send_message(f'{interaction.user.mention} has joined the event!', ephemeral=True)
+        await interaction.response.send_message("This command can only be used by moderators.", ephemeral=True)
+                
+@tree.command(
+    name="admire",
+    description="Admire someone anonymously!",
+    guild=discord.Object(id=1220178595683766322)
+)
+async def admire(interaction, member: discord.Member, message: str):
+    await interaction.response.send_message("Admired someone! Check out <#1256753957838262373>.", ephemeral=True)
+    admired = discord.Embed(
+        title=f"Someone admired {member.display_name}! Here's what they said about them.", 
+        description=f"{message}", 
+        color=0xff0000
+    )
+    admired.set_thumbnail(
+        url="https://cdn.discordapp.com/icons/1220178595683766322/486b8dddba9c69b01571032c00de4f0a.webp?size=1024&format=webp&width=0&height=256"
+    )
+    admired.set_author(
+        name=f"{member.display_name}",
+        icon_url=f"{member.avatar.url}"
+    )
+    admire_channel = bot.get_channel(1256753957838262373)
+    await admire_channel.send(f'{member.mention}', embed=admired)
+    log_channel = bot.get_channel(log_channel_id)
+    await log_channel.send(f"{interaction.user.mention} admired {member.mention}.")
 
-        special_channel = bot.get_channel(1232184214024359936)
-        if special_channel:
-            await special_channel.send(f'{interaction.user.name} has joined the event.')
+@tree.command(
+    name="bt",
+    description="Guesses a member as a role",
+    guild=discord.Object(id=1220178595683766322)
+)
+async def bt(interaction, member: discord.Member, role: str):
+    await interaction.response.send_message(f"<:HQ_Guesser:1251358890600431686> {member.display_name} was guessed as {role}")
+
+@tree.command(
+    name="enter",
+    description="Enters the chat.",
+    guild=discord.Object(id=1220178595683766322)
+)
+async def enter(interaction):
+    await interaction.response.send_message("Entered!", ephemeral=True)
+    entere = discord.Embed(description=f"{interaction.user.mention} entered the chat.", color=0xff0000)
+    await interaction.channel.send(embed=entere)
+
+@tree.command(
+    name="exit",
+    description="Exits the chat.",
+    guild=discord.Object(id=1220178595683766322)
+)
+async def exit(interaction):
+    await interaction.response.send_message("Exited!", ephemeral=True)
+    exite = discord.Embed(description=f"{interaction.user.mention} exited the chat.", color=0xff0000)
+    await interaction.channel.send(embed=exite)
 
 @tree.command(
     name="ping",
@@ -41,7 +89,16 @@ async def join(interaction):
 )
 async def ping(interaction):
     ping = round(bot.latency * 1000)
-    await interaction.response.send_message(f'<:goodping:1239662717133000706> Pong! My ping is {ping}ms')
+    await interaction.response.send_message(f'Pong! My ping is {ping}ms')
+
+
+@bot.event
+async def on_member_join(member):
+    general = bot.get_channel(1220178597940297841)
+    
+    if general:
+        welcome = discord.Embed(description="Make sure to read the rules in <#1220178597008900208>!\nYou can find Among Us game codes in <#1246841334665445407>, and chat about them in <#1246841530929643570>.\nYou can change your name color in <#1226037678105952326>.\nWhen you are ready, begin chatting!", color=0xff0000)
+        await general.send(f'Welcome to the server, {member.mention}!', embed=welcome)
 
 @bot.event 
 async def on_member_remove(member):
@@ -52,153 +109,27 @@ async def on_member_remove(member):
         # Send a message to the record channel
         await record_channel.send(f'{member.display_name} has left the server.')
 
-@tree.command(name="close", description="Closes a post", guild=discord.Object(id=1220178595683766322))
-async def close(interaction):
-    if interaction.user == interaction.channel.owner or interaction.user.guild_permissions.manage_threads:
-        try:
-            if isinstance(interaction.channel, discord.Thread):
-                log_channel = bot.get_channel(log_channel_id)
-                thread_id = interaction.channel.id
-                thread = bot.get_channel(thread_id)
-                await interaction.response.send_message("Closed!" , ephemeral=True)
-                await thread.edit(archived=True, locked=True, name="CLOSED")
-                await log_channel.send(f"{interaction.user.mention} used the `/close` command in {interaction.channel.mention}!")
-            else:
-                await interaction.response.send_message("This command can only be used in a thread.")
-        except discord.Forbidden:
-            await interaction.channel.send("I don't have permission to close the thread.")
-    else:
-        await interaction.response.send_message("You can't close this thread.")
-
-@tree.command(name="toh", description="Pings the TOH lobby role", guild=discord.Object(id=1220178595683766322))
-async def toh(interaction):
-            if isinstance(interaction.channel, discord.Thread):
-                log_channel = bot.get_channel(log_channel_id)
-                thread_id = interaction.channel.id
-                thread_link = f'https://discord.com/channels/{interaction.guild.id}/{thread_id}'
-                await interaction.channel.send(f"{thread_link} <@&1220178595704733789>")
-                await interaction.response.send_message("Pinged!" , ephemeral=True)
-                await log_channel.send(f"{interaction.user.mention} pinged the TOH lobby role in {interaction.channel.mention}!")
-            else:
-                await interaction.response.send_message("This command can only be used in a thread.")
-
-@tree.command(name="tohe", description="Pings the TOHE lobby role", guild=discord.Object(id=1220178595683766322))
-async def tohe(interaction):
-        if isinstance(interaction.channel, discord.Thread):
-            log_channel = bot.get_channel(log_channel_id)
-            thread_id = interaction.channel.id
-            thread_link = f'https://discord.com/channels/{interaction.guild.id}/{thread_id}'
-            await interaction.channel.send(f"{thread_link} <@&1220178595704733788>")
-            await interaction.response.send_message("Pinged!" , ephemeral=True)
-            await log_channel.send(f"{interaction.user.mention} pinged the TOHE lobby role in {interaction.channel.mention}!")
-        else:
-            await interaction.response.send_message("This command can only be used in a thread.")
-
-@tree.command(name="tohy", description="Pings the TOH-Y lobby role", guild=discord.Object(id=1220178595683766322))
-async def tohy(interaction):
-        if isinstance(interaction.channel, discord.Thread):
-            log_channel = bot.get_channel(log_channel_id)
-            thread_id = interaction.channel.id
-            thread_link = f'https://discord.com/channels/{interaction.guild.id}/{thread_id}'
-            await interaction.channel.send(f"{thread_link} <@&1226031538437886002>")
-            await interaction.response.send_message("Pinged!" , ephemeral=True)
-            await log_channel.send(f"{interaction.user.mention} pinged the TOH-Y lobby role in {interaction.channel.mention}!")
-        else:
-            await interaction.response.send_message("This command can only be used in a thread.")
-@tree.command(name="tor", description="Pings the TOR lobby role", guild=discord.Object(id=1220178595683766322))
-async def tor(interaction):
-        if isinstance(interaction.channel, discord.Thread):
-            log_channel = bot.get_channel(log_channel_id)
-            thread_id = interaction.channel.id
-            thread_link = f'https://discord.com/channels/{interaction.guild.id}/{thread_id}'
-            await interaction.channel.send(f"{thread_link} <@&1220178595704733790>")
-            await interaction.response.send_message("Pinged!" , ephemeral=True)
-            await log_channel.send(f"{interaction.user.mention} pinged the TOR lobby role in {interaction.channel.mention}!")
-        else:
-            await interaction.response.send_message("This command can only be used in a thread.")
-
-@tree.command(name="tour", description="Pings the TOU-R lobby role", guild=discord.Object(id=1220178595683766322))
-async def tour(interaction):
-        # Send a message to the target channel
-        if isinstance(interaction.channel, discord.Thread):
-            log_channel = bot.get_channel(log_channel_id)
-            thread_id = interaction.channel.id
-            thread_link = f'https://discord.com/channels/{interaction.guild.id}/{thread_id}'
-            await interaction.channel.send(f"{thread_link} <@&1220178595704733792>")
-            await interaction.response.send_message("Pinged!" , ephemeral=True)
-            await log_channel.send(f"{interaction.user.mention} pinged the TOU-R lobby role in {interaction.channel.mention}!")
-        else:
-            await interaction.response.send_message("This command can only be used in a thread.")
-
-@tree.command(name="tob", description="Pings the TOB lobby role", guild=discord.Object(id=1220178595683766322))
-async def tob(interaction):
-        if isinstance(interaction.channel, discord.Thread):
-            log_channel = bot.get_channel(log_channel_id)
-            thread_id = interaction.channel.id
-            thread_link = f'https://discord.com/channels/{interaction.guild.id}/{thread_id}'
-            await interaction.channel.send(f"{thread_link} <@&1226031456510545930>")
-            await interaction.response.send_message("Pinged!" , ephemeral=True)
-            await log_channel.send(f"{interaction.user.mention} pinged the TOB lobby role in {interaction.channel.mention}!")
-        else:
-            await interaction.response.send_message("This command can only be used in a thread.")
-
-@tree.command(name="vanilla", description="Pings the vanilla lobby role", guild=discord.Object(id=1220178595683766322))
-async def vanilla(interaction):
-        if isinstance(interaction.channel, discord.Thread):
-            log_channel = bot.get_channel(log_channel_id)
-            thread_id = interaction.channel.id
-            thread_link = f'https://discord.com/channels/{interaction.guild.id}/{thread_id}'
-            await interaction.channel.send(f"{thread_link} <@&1220178595683766331>")
-            await interaction.response.send_message("Pinged!" , ephemeral=True)
-            await log_channel.send(f"{interaction.user.mention} pinged the vanilla lobby role in {interaction.channel.mention}!")
-        else:
-            await interaction.response.send_message("This command can only be used in a thread.")
-
-@tree.command(name="0cd", description="Pings the 0cd lobby role", guild=discord.Object(id=1220178595683766322))
-async def ocd(interaction):
-        if isinstance(interaction.channel, discord.Thread):
-            log_channel = bot.get_channel(log_channel_id)
-            thread_id = interaction.channel.id
-            thread_link = f'https://discord.com/channels/{interaction.guild.id}/{thread_id}'
-            await interaction.channel.send(f"{thread_link} <@&1220178595704733786>")
-            await interaction.response.send_message("Pinged!" , ephemeral=True)
-            await log_channel.send(f"{interaction.user.mention} pinged the 0cd lobby role in {interaction.channel.mention}!")
-        else:
-            await interaction.response.send_message("This command can only be used in a thread.")
-
-@tree.command(name="other", description="Pings the other mod lobby role", guild=discord.Object(id=1220178595683766322))
-async def other(interaction):
-        if isinstance(interaction.channel, discord.Thread):
-            log_channel = bot.get_channel(log_channel_id)
-            thread_id = interaction.channel.id
-            thread_link = f'https://discord.com/channels/{interaction.guild.id}/{thread_id}'
-            await interaction.channel.send(f"{thread_link} <@&1220178595704733787>")
-            await interaction.response.send_message("Pinged!" , ephemeral=True)
-            await log_channel.send(f"{interaction.user.mention} pinged the other mod lobby role in {interaction.channel.mention}!")
-        else:
-            await interaction.response.send_message("This command can only be used in a thread.")
-
 @tree.command(
-    name="emergency",
-    description="Pings the staff",
+    name="report",
+    description="Makes a report to the staff",
     guild=discord.Object(id=1220178595683766322)
 )
-async def emergency(interaction):
-    log_channel = bot.get_channel(log_channel_id)
+async def report(interaction, issue: str):
     await interaction.response.send_message("The staff is on their way!", ephemeral=True)
-    await interaction.channel.send("<@&1226643701582008391>")
+    report_channel = bot.get_channel(1257024265153282072)
+    reporte = discord.Embed(description=f"{issue}", color=0xff0000)
+    channel_url = f"https://discord.com/channels/{interaction.guild.id}/{interaction.channel.id}"
+    reporte.set_author(
+        name=f"{interaction.user.display_name} ({interaction.user.id})",
+        icon_url=f"{interaction.user.avatar.url}",
+        url=channel_url
+    )
+    reporte.set_footer(
+        text=f"{interaction.channel.name} ({interaction.channel.id})"
+    )
+    await report_channel.send("<@&1226643701582008391>", embed=reporte)
     await log_channel.send(f"{interaction.user.mention} pinged the staff in {interaction.channel.mention}!")
 
-@tree.command(
-    name="who",
-    description="Random active member in the server",
-    guild=discord.Object(id=1220178595683766322)
-)
-async def who(interaction):
-    log_channel = bot.get_channel(log_channel_id)
-    random_message = random.choice(random_messages)
-    await interaction.response.send_message(random_message)
-    await log_channel.send(f"{interaction.user.mention} used the `/who` command in {interaction.channel.mention}!")
 @tree.command(
     name="hi",
     description="Says hi!",
@@ -212,20 +143,22 @@ async def hi(interaction):
 cooldowns = {}
 
 @tree.command(
-    name="mafia",
-    description="Pings the mafia patrty!",
+    name="tl",
+    description="Judges a member",
     guild=discord.Object(id=1220178595683766322)
 )
-async def mafia(interaction):
-    log_channel = bot.get_channel(log_channel_id)
-    await interaction.response.send_message("Pinged!", ephemeral=True)
-    await interaction.channel.send("<@&1220178595683766328> come join us in the Mafia party!")
-    await log_channel.send(f"{interaction.user.mention} pinged the mafia party in {interaction.channel.mention}!")
-  
+async def bt(interaction, member: discord.Member):
+    await interaction.response.send_message(f"{member.display_name} was judged")
 
 @bot.event
 async def on_ready():
     await tree.sync(guild=discord.Object(id=1220178595683766322))
+    await tree.sync(guild=discord.Object(id=1228208591786344548))
+    print("Ready!")
+import os
+import dotenv
+dotenv.load_dotenv()
+bot.run(os.getenv('BOT_TOKEN'))
     await tree.sync(guild=discord.Object(id=1228208591786344548))
     print("Ready!")
 import os
